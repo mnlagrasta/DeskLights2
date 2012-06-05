@@ -5,12 +5,13 @@
 // LED Stuff
 int dataPin  = 2;    // Yellow wire on Adafruit Pixels
 int clockPin = 3;    // Green wire on Adafruit Pixels
+// update the next line to match your number of lights and chip type
 Adafruit_WS2801 strip = Adafruit_WS2801(40, dataPin, clockPin, WS2801_GRB);
-int defaultPattern = 1;
+int defaultPattern = 0;
 
 /************ ETHERNET STUFF ************/
 byte mac[] = { 0x90, 0xA2, 0xDA, 0x0D, 0x27, 0x05 }; // update this to match your arduino/shield
-byte ip[] = { 192, 168, 2, 254 }; // update this to match your network
+byte ip[] = { 10, 10, 16, 211 }; // update this to match your network
 EthernetServer server(80);
 #define BUFSIZ 100
 
@@ -18,6 +19,19 @@ EthernetServer server(80);
 #define error(s) error_P(PSTR(s))
 
 /********* Helper Functions are here, real meat is later *************/
+
+char key[8];
+int keyset = 0;
+
+void setKey(char * in) {
+ if (!keyset) {
+  Serial.println("key is not set");
+  strcpy(key, in);
+  keyset++;
+  Serial.print("key is now set: ");
+  Serial.println(key);
+ }
+}
 
 // ascii hex to rgb
 // in is a RGB hex color string "ff00ff"
@@ -60,6 +74,42 @@ int g2p(int x, int y) {
   {36,35,28,27,20,19,12,11,4,3}
  };
  return grid[y][x];
+}
+
+void pixelHex(char *param) {
+ char *x;
+ char *y;
+ char *hexColor;
+ x = strtok(param, ",");
+ y = strtok(NULL, ",");
+ hexColor = strtok(NULL, ",");
+ strip.setPixelColor(g2p(atoi(x), atoi(y)), ah2c(hexColor));
+ strip.show();
+};
+
+void pixelRGB(char *param) {
+ char *x;
+ char *y;
+ char *r;
+ char *g;
+ char *b;
+ x = strtok(param, ",");
+ y = strtok(NULL, ",");
+ r = strtok(NULL, ",");
+ g = strtok(NULL, ",");
+ b = strtok(NULL, ",");
+ strip.setPixelColor(g2p(atoi(x), atoi(y)), Color(atoi(r),atoi(g),atoi(b)));
+ strip.show();
+};
+
+void colorAllRGB(char *param) {
+ char *r;
+ char *g;
+ char *b;
+ r = strtok(param, ",");
+ g = strtok(NULL, ",");
+ b = strtok(NULL, ",");
+ colorAll(Color(atoi(r), atoi(g), atoi(b)));
 }
 
 // fade from off to "target" rgb values
@@ -171,6 +221,27 @@ void fade2rgb(int pixel, int r, int g, int b) {
  }
 }
  */
+
+
+void splitURL(char *url, char *ohost, char *ofile, char *oparams) {
+ char *host;
+ char *file;
+ char *params;
+ 
+ char cpy[100]; //TODO: use len of url?
+ strcpy(cpy, url);
+ host = strstr(cpy, "//") + 2;
+ file = strstr(host, "/");
+ params = strstr(cpy, "?");
+ file[0] = '\0';
+ file++;
+ params[0] = '\0';
+ params++;
+
+ strcpy(ohost, host);
+ strcpy(ofile, file);
+ strcpy(oparams, params);
+}
 
 /************** here come the patterns, these are intended to run between notifications ****************/
 
@@ -449,8 +520,14 @@ bool listen() {
     **********/
     if (!strcmp(command, "/")) {
      // no command
+    } else if (!strcmp(command, "key")) {
+     Serial.println("got key request:");
+     Serial.println(param);
+     setKey(param);
     } else if (!strcmp(command, "color")) {
-     if (param) { colorAll(ah2c(param)); }
+     if (param) {  colorAll(ah2c(param)); }
+    } else if (!strcmp(command, "colorrgb")) {
+     if (param) {  colorAllRGB(param); }
     } else if (!strcmp(command, "cylon")) {
      p_cylon();
     } else if (!strcmp(command, "growl")) {
@@ -467,6 +544,10 @@ bool listen() {
      colorLines();
     } else if (!strcmp(command, "alert")) {
      alert(param);
+    } else if (!strcmp(command, "pixel")) {
+     pixelHex(param);
+    } else if (!strcmp(command, "pixelrgb")) {
+     pixelRGB(param);
     } else if (!strcmp(command, "default")) {
      colorAll(Color(0,0,0));
      defaultPattern = atoi(param);
@@ -490,7 +571,7 @@ void setup() {
  Ethernet.begin(mac, ip);
  server.begin();
  strip.begin();
- lightTest();
+ //lightTest();
 }
 
 // burn baby, burn
