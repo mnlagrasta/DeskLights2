@@ -7,7 +7,7 @@ int dataPin  = 2;    // Yellow wire on Adafruit Pixels
 int clockPin = 3;    // Green wire on Adafruit Pixels
 // update the next line to match your number of lights and chip type
 Adafruit_WS2801 strip = Adafruit_WS2801(40, dataPin, clockPin, WS2801_GRB);
-int defaultPattern = 0;
+int defaultPattern = 1;
 
 /************ ETHERNET STUFF ************/
 byte mac[] = { 0x90, 0xA2, 0xDA, 0x0D, 0x27, 0x05 }; // update this to match your arduino/shield
@@ -583,7 +583,7 @@ void setup() {
  Ethernet.begin(mac, ip);
  server.begin();
  strip.begin();
- //lightTest();
+ lightTest();
 }
 
 // burn baby, burn
