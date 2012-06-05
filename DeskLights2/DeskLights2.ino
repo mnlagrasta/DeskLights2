@@ -23,6 +23,16 @@ EthernetServer server(80);
 char key[8];
 int keyset = 0;
 
+/*
+ I'm trying to add the option to require a key to auth requests
+ The first call with key=xxx will set the key
+ all subsequent calls would need to provide the key
+ if the key is never set, all requests will be honored
+ to change the key, restart the arduino and send a new key
+ 
+ Unfortunately, this will require more sophisticated url parsing,
+ which I don't have time to work on right now...any takers?
+*/
 void setKey(char * in) {
  if (!keyset) {
   Serial.println("key is not set");
@@ -31,6 +41,28 @@ void setKey(char * in) {
   Serial.print("key is now set: ");
   Serial.println(key);
  }
+}
+
+// This function was meant to help with the url parsing
+// it can seperate the parts, but not the parameters themselves
+void splitURL(char *url, char *ohost, char *ofile, char *oparams) {
+ char *host;
+ char *file;
+ char *params;
+ 
+ char cpy[100]; //TODO: use len of url?
+ strcpy(cpy, url);
+ host = strstr(cpy, "//") + 2;
+ file = strstr(host, "/");
+ params = strstr(cpy, "?");
+ file[0] = '\0';
+ file++;
+ params[0] = '\0';
+ params++;
+
+ strcpy(ohost, host);
+ strcpy(ofile, file);
+ strcpy(oparams, params);
 }
 
 // ascii hex to rgb
@@ -222,26 +254,6 @@ void fade2rgb(int pixel, int r, int g, int b) {
 }
  */
 
-
-void splitURL(char *url, char *ohost, char *ofile, char *oparams) {
- char *host;
- char *file;
- char *params;
- 
- char cpy[100]; //TODO: use len of url?
- strcpy(cpy, url);
- host = strstr(cpy, "//") + 2;
- file = strstr(host, "/");
- params = strstr(cpy, "?");
- file[0] = '\0';
- file++;
- params[0] = '\0';
- params++;
-
- strcpy(ohost, host);
- strcpy(ofile, file);
- strcpy(oparams, params);
-}
 
 /************** here come the patterns, these are intended to run between notifications ****************/
 
