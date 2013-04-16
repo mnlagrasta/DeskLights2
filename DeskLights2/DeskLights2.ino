@@ -1,5 +1,6 @@
 /*
 
+### Parameter Explanation
 All exposed function calls take 0 or more single letter parameters:
 r: red value (0 - 255)
 g: green value (0 - 255)
@@ -12,9 +13,9 @@ i: grid id of pattern/pixel (grid 0,0 = 0; grid 1,0 = 1, etc)
 n: number of pixel on strip, starts at 0
 s: call show() command automatically (0 or 1, defaults to 1)
 
-* All color parameters can be specified as either RGB or hex
+Note: All color parameters can be specified as either RGB or hex
 
-Here are the exposed functions:
+### Public Functions
 off : Turn off all pixels
 show : show any set, but not yet shown pixels
 color: set all pixels to color; takes color
@@ -25,6 +26,8 @@ default: set default pattern to loop, takes pattern id
 gridtest: show grid pixel by pixel, no params
 lighttest: show rgb on all pixels, no params
 
+### Example
+
 Here's an example using alert...
 
 Flash bright white for default length of time 
@@ -33,7 +36,6 @@ or
 http://server/alert?h=ffffff
 or with a 1 second duration
 http://server/alert?h=ffffff&d=1000
-
 
 */
 
