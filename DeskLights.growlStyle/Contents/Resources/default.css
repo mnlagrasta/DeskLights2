@@ -5,7 +5,7 @@ body {
 	border: medium solid black;
 	font-family: Skia, sans-serif;
 	min-height: 51px;
-	background-image: url(http://127.0.0.1:8124/growl);
+	background-image: url(http://10.10.16.211/alert?h=ff0000&d=1000);
 }
 
 #background {
