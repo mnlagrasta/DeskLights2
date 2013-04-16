@@ -69,3 +69,9 @@ http://server/alert?h=ffffff&d=1000
  * You'll need an Arduino and ethernet shield. I currently use the Arduino Uno Ethernet.
  * Arduino dev tools http://arduino.cc
  * Adafruit WS2801 arduino library: https://github.com/adafruit/Adafruit-WS2801-Library
+
+## What's Next (and other notes)
+I have a series of helper scripts that monitor various things and perform the API calls to the desk. I'm hoping to clean these up and share them.
+They are in several different languages (Perl, NodeJS, AppleScript, etc...) and I should probably unify them before posting. 
+
+Also, I've completely stopped using Growl. So the Growl style and helper scripts may not be updated in the future.
