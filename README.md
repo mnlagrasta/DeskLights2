@@ -30,7 +30,7 @@ h: hex string representing color (000000 - ffffff)
 x: x coordinate
 y: y coordinate
 d: delay in milliseconds
-i: grid id of pattern/pixel (grid 0,0 = 0; grid 1,0 = 1, etc)
+i: id of pattern/grid id of pixel (grid 0,0 = 0; grid 1,0 = 1, etc)
 n: number of pixel on strip, starts at 0
 s: call show() command automatically (0 or 1, defaults to 1)
 ```
