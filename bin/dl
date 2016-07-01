@@ -1,0 +1,138 @@
+#!/usr/bin/env perl
+
+use strict;
+use warnings;
+
+use YAML::Tiny;
+use Path::Tiny;
+use Getopt::Long;
+use Data::Dumper;
+
+GetOptions(
+    'config=s' => \( my $config_file = "~/.desklights.yml" ),
+    'ip=s'     => \my $ip,
+    'y_max'    => \my $y_max,
+    'x_max'    => \my $x_max,
+    'verbose'  => \my $verbose,
+    'help' => sub { show_help() },
+    'oi'   => \my $output_image,
+);
+
+# read config, if given or found at default location
+if ($config_file) {
+    my $config;
+    my $yaml = YAML::Tiny->read( path($config_file) ) or die $!;
+    $config = $yaml->[0];
+    $ip    ||= $yaml->[0]->{ip}    unless $ip;
+    $y_max ||= $yaml->[0]->{y_max} unless $y_max;
+    $x_max ||= $yaml->[0]->{x_max} unless $x_max;
+    print Dumper($config) if $verbose;
+}
+
+# check to see if we have an IP, Height, and Width
+show_help("Must have an IP, Height, and Width")
+    unless ( $ip && $y_max && $x_max );
+
+my $param = shift;
+
+if ( !$param ) {
+    show_help();
+}
+elsif ( $param eq 'off' ) {
+
+    # check for a known command first: off, test, etc...
+    doit('default?i=0');
+    doit('off');
+
+}
+elsif ( $param eq 'test' ) {
+
+    # check for a known command first: off, test, etc...
+    print("Running test pattern\n") if $verbose;
+    my @inputs = (
+        'wipe?h=ff0000', 'wipe?h=00ff00', 'wipe?h=0000ff', 'wipe?h=ffffff',
+        'wipe?h=000000'
+    );
+    foreach my $a (@inputs) {
+        doit($a);
+    }
+
+}
+elsif ( $param eq '0' || $param eq '1' || $param eq '2' ) {
+
+    # if it is a number (within range), use it to set the default pattern
+    print("Setting default pattern to id $param\n") if $verbose;
+    doit( "default?i=" . $param );
+}
+elsif ( -r $param ) {
+
+    # if it is a file, try to use it as an image based frame
+    print("getting pixels from image file: $param\n") if $verbose;
+    require Image::Resize;
+    my $image = Image::Resize->new($param);
+    my $new_image = $image->resize( $x_max, $y_max, 0 );
+
+    if ($output_image) {
+        my $out_name = $param . '_output.jpg';
+        print "Writing shrunken file $out_name\n" if $verbose;
+        open( FH, '>' . $out_name );
+        print FH $new_image->jpeg();
+        close(FH);
+    }
+
+    for ( my $x = 0; $x <= $x_max; $x++ ) {
+
+        for ( my $y = 0; $y <= $y_max; $y++ ) {
+            my $index = $new_image->getPixel( $x, $y );
+            my ( $r, $g, $b ) = $new_image->rgb($index);
+            printf( "%d x %d = %3d %3d %3d\n", $x, $y, $r, $g, $b )
+                if $verbose;
+            doit("pixel?x=$x&y=$y&r=$r&g=$g&b=$b&s=0");
+
+        }
+
+    }
+
+    doit("show");
+
+}
+else {
+    # finally, send it raw and see what happens
+    doit($param);
+}
+
+sub doit {
+    my $cmd = "curl -s 'http://" . $ip . "/";
+    $cmd .= shift;
+    $cmd .= "'";
+    print $cmd . "\n" if $verbose;
+    `$cmd`;
+    return 1;
+}
+
+sub show_help {
+    my $in = shift;
+    print <<EOF;
+
+    --config, -h	config file (defaults to ~/.desklights)
+usage: dl [options] command
+    --ip, -i	target ip address
+    --x_max, -x	maximum width of display (zero offset)
+    --y_max, -y	maximum height of display (zero offset)
+    --verbose, -v	verbose output, will show http calls
+    --help, -h	This help message
+    
+    The value of command will be interpreted in the following order:
+        If it is a known command, it will be run (i.e. off or test);
+        If it is a number, it will try to use it as a default pattern id;
+        If it is a valid file, it will use it as an image map;
+        Finally, it will send the unmodified string as a raw command over http;
+
+EOF
+    if ($in) {
+        die $in;
+    }
+    else {
+        exit(0);
+    }
+}
