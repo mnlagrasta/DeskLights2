@@ -53,8 +53,8 @@ static uint8_t mac[] = { 0x90, 0xA2, 0xDA, 0x0D, 0x27, 0x05 }; // update this to
 static uint8_t ip[] = { 10, 10, 16, 211 }; // update this to match your network
 
 // LED Stuff
-int dataPin = 2; // Yellow wire on Adafruit Pixels
-int clockPin = 3; // Green wire on Adafruit Pixels
+uint8_t dataPin = 2; // Yellow wire on Adafruit Pixels
+uint8_t clockPin = 3; // Green wire on Adafruit Pixels
 #define STRIPLEN 60
 Adafruit_WS2801 strip = Adafruit_WS2801(STRIPLEN, dataPin, clockPin, WS2801_GRB);
 int defaultPattern = 0;
