@@ -39,6 +39,7 @@ http://server/alert?h=ffffff&d=1000
 
 */
 
+#define WEBDUINO_SERIAL_DEBUGGING 0
 #define WEBDUINO_FAIL_MESSAGE "NOT ok\n"
 #include "SPI.h"
 #include "avr/pgmspace.h"
@@ -53,8 +54,8 @@ static uint8_t mac[] = { 0x90, 0xA2, 0xDA, 0x0D, 0x27, 0x05 }; // update this to
 static uint8_t ip[] = { 10, 10, 16, 211 }; // update this to match your network
 
 // LED Stuff
-int dataPin = 2; // Yellow wire on Adafruit Pixels
-int clockPin = 3; // Green wire on Adafruit Pixels
+uint8_t dataPin = 2; // Yellow wire on Adafruit Pixels
+uint8_t clockPin = 3; // Green wire on Adafruit Pixels
 #define STRIPLEN 60
 Adafruit_WS2801 strip = Adafruit_WS2801(STRIPLEN, dataPin, clockPin, WS2801_GRB);
 int defaultPattern = 0;
@@ -100,7 +101,7 @@ P(noauth) = "User Denied\n";
 
 // max length of param names and values
 #define NAMELEN 2
-#define VALUELEN 32
+#define VALUELEN 361
 
 /*** Below here shouldn't need to change ***/
 
@@ -590,6 +591,43 @@ void cmd_pixel(WebServer &server, WebServer::ConnectionType type, char *url_tail
 	server.printP(ok);
 }
 
+void cmd_frame(WebServer &server, WebServer::ConnectionType type, char *url_tail, bool tail_complete) {
+  URLPARAM_RESULT rc;
+  char name[NAMELEN];
+  char value[VALUELEN];
+
+  if (!auth(server)) { return;}
+
+  if (type == WebServer::POST) {
+    while (server.readPOSTparam(name, NAMELEN, value, VALUELEN)) {
+
+      // loop through value, getting 6 chars at a time
+      // convert hex to color and set pixel at current id
+      // repeat until input is exhausted or max pixels
+      int o = 0;
+      int id = 0;
+      while (( o < sizeof(value) ) && ( id < STRIPLEN)) {
+        char hc[7];
+        int ho;
+        for (ho = 0; ho < 6; ho++) {
+            hc[ho+1] = '\0';
+          hc[ho] = value[o];
+          o++;
+        }
+        uint32_t c = hexColor(hc);
+        strip.setPixelColor(id, c);
+        id++;
+      }
+    
+    }
+  }
+  
+    
+  strip.show();
+  server.printP(ok);
+}
+
+
 // begin standard arduino setup and loop pattern
 
 void setup() {
@@ -606,7 +644,10 @@ void setup() {
 	webserver.addCommand("alert", &cmd_alert);
 	webserver.addCommand("pixel", &cmd_pixel);
 	webserver.addCommand("default", &cmd_default);
-	webserver.addCommand("test", &cmd_test);
+	webserver.addCommand("frame", &cmd_frame);
+	// It seems to ignore anything beyond the first 8
+	//webserver.addCommand("gridtest", &cmd_gridTest);
+	//webserver.addCommand("lighttest", &cmd_lightTest);
 	webserver.begin();
 	
 	strip.begin();
@@ -614,6 +655,8 @@ void setup() {
 	// light blip of light to signal we are ready to listen
 	colorAll(Color(0,0,11));
 	colorAll(Color(0,0,0));
+
+  Serial.println("Ready..."); 
 }
 
 void loop()
