@@ -105,6 +105,12 @@ P(noauth) = "User Denied\n";
 
 /*** Below here shouldn't need to change ***/
 
+void log(char * input) {
+	if (1) {
+		Serial.println(input);
+	}
+}
+
 // LED support functions
 
 // create the "Color" value from rgb...This is right from Adafruit
@@ -178,22 +184,28 @@ int g2p(int x, int y) {
 
 // flash color "c" for "wait" ms
 void alert(uint32_t c, int wait) {
+	log("executing alert");
 	colorAll(c);
 	delay(wait);
 	colorAll(Color(0,0,0));
 }
 
 // show the grid to verify
-void gridTest() {
+void gridTest(int wait) {
 	int x;
 	int y;
 	uint32_t on = Color(255,255,255);
 	uint32_t off = Color(0,0,0);
+	
+	if (!wait) {
+		wait = 250;
+	}
+	
 	for ( x = 0; x <= max_x; x++) {
 		for ( y = 0; y <= max_y; y++) {
 			strip.setPixelColor(g2p(x,y), on);
 			strip.show();
-			delay(500);
+			delay(wait);
 			strip.setPixelColor(g2p(x,y), off);
 			strip.show();
 		}
@@ -201,12 +213,12 @@ void gridTest() {
 }
 
 // wipe the major colors through all pixels
-void lightTest(int delay) {
-	colorWipe(Color(255, 0, 0), delay);
-	colorWipe(Color(0, 255, 0), delay);
-	colorWipe(Color(0, 0, 255), delay);
-	colorWipe(Color(255, 255, 255), delay);
-	colorWipe(Color(0, 0, 0), delay);
+void lightTest(int wait) {
+	colorWipe(Color(255, 0, 0), wait);
+	colorWipe(Color(0, 255, 0), wait);
+	colorWipe(Color(0, 0, 255), wait);
+	colorWipe(Color(255, 255, 255), wait);
+	colorWipe(Color(0, 0, 0), wait);
 }
 
 // next are the patterns, meant to loop
@@ -459,21 +471,43 @@ void cmd_alert(WebServer &server, WebServer::ConnectionType type, char *url_tail
 	server.printP(ok);
 }
 
-void cmd_gridTest(WebServer &server, WebServer::ConnectionType type, char *url_tail, bool tail_complete) {
-	if (!auth(server)) { return;}
-	gridTest();
-	server.printP(ok);
-}
-
 void cmd_show(WebServer &server, WebServer::ConnectionType type, char *url_tail, bool tail_complete) {
 	if (!auth(server)) { return;}
 	strip.show();
 	server.printP(ok);
 }
 
-void cmd_lightTest(WebServer &server, WebServer::ConnectionType type, char *url_tail, bool tail_complete) {
+void cmd_test(WebServer &server, WebServer::ConnectionType type, char *url_tail, bool tail_complete) {
 	if (!auth(server)) { return;}
-	lightTest(10);
+	
+	URLPARAM_RESULT rc;
+	char name[NAMELEN];
+	char value[VALUELEN];
+	int id;
+	int d;
+	while (strlen(url_tail)) {
+		rc = server.nextURLparam(&url_tail, name, NAMELEN, value, VALUELEN);
+		if ((rc != URLPARAM_EOS)) {
+			switch(name[0]) {
+				case 'i':
+					id = atoi(value);
+					break;
+				case 'd':
+					d = atoi(value);
+					break;
+			}
+		}
+	}
+	
+	switch(id) {
+		case 0:
+			lightTest(d);
+			break;
+		case 1:
+			gridTest(d);
+			break;
+	}
+	
 	server.printP(ok);
 }
 
@@ -499,12 +533,16 @@ void cmd_pixel(WebServer &server, WebServer::ConnectionType type, char *url_tail
 	while (strlen(url_tail)) {
 		rc = server.nextURLparam(&url_tail, name, NAMELEN, value, VALUELEN);
 		if ((rc != URLPARAM_EOS)) {
+			log(name);
+			log(value);
 			switch(name[0]) {
 				case 'i':
 					gid = atoi(value);
+					use_gid = 1;
 					break;
 				case 'n':
 					id = atoi(value);
+					use_id = 1;
 					break;
 				case 'x':
 					x = atoi(value);
@@ -595,6 +633,7 @@ void cmd_frame(WebServer &server, WebServer::ConnectionType type, char *url_tail
 void setup() {
 	Serial.begin(9600);
 	
+	//TODO: I think I've run out of memory, consolidate "tests"
 	Ethernet.begin(mac, ip);
 	webserver.setFailureCommand(&my_failCmd);
 	webserver.setDefaultCommand(&cmd_index);
@@ -605,8 +644,8 @@ void setup() {
 	webserver.addCommand("alert", &cmd_alert);
 	webserver.addCommand("pixel", &cmd_pixel);
 	webserver.addCommand("default", &cmd_default);
-  webserver.addCommand("frame", &cmd_frame);
-  // It seems to ignore anything beyond the first 8
+	webserver.addCommand("frame", &cmd_frame);
+	// It seems to ignore anything beyond the first 8
 	//webserver.addCommand("gridtest", &cmd_gridTest);
 	//webserver.addCommand("lighttest", &cmd_lightTest);
 	webserver.begin();
