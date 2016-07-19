@@ -1,11 +1,14 @@
 #!/usr/bin/env perl
 
+#TODO: include auth pass through from config and params
+
 use strict;
 use warnings;
 
 use YAML::Tiny;
 use Path::Tiny;
 use Getopt::Long;
+use HTTP::Tiny;
 use Data::Dumper;
 
 GetOptions(
@@ -26,87 +29,69 @@ if ($config_file) {
     $ip    ||= $yaml->[0]->{ip}    unless $ip;
     $y_max ||= $yaml->[0]->{y_max} unless $y_max;
     $x_max ||= $yaml->[0]->{x_max} unless $x_max;
-    print Dumper($config) if $verbose;
+    do_log( Dumper($config) );
 }
 
 # check to see if we have an IP, Height, and Width
 show_help("Must have an IP, Height, and Width")
     unless ( $ip && $y_max && $x_max );
 
+my $base_url = 'http://' . $ip . '/';
+
 my $param = shift;
 
-if ( !$param ) {
-    show_help();
-}
-elsif ( $param eq 'off' ) {
+show_help() unless $param;
 
-    # check for a known command first: off, test, etc...
-    doit('default?i=0');
-    doit('off');
-
+if ( $param eq 'off' ) {
+    do_get('default?i=0');
+    do_get('off');
 }
 elsif ( $param eq 'test' ) {
-
-    # check for a known command first: off, test, etc...
-    print("Running test pattern\n") if $verbose;
     my @inputs = (
         'wipe?h=ff0000', 'wipe?h=00ff00', 'wipe?h=0000ff', 'wipe?h=ffffff',
         'wipe?h=000000'
     );
     foreach my $a (@inputs) {
-        doit($a);
+        do_get($a);
     }
 
 }
-elsif ( $param eq '0' || $param eq '1' || $param eq '2' ) {
+elsif ( $param eq 'frame' ) {
+    my $form_data = { h => shift };
+    do_post( $param, $form_data );
+}
+elsif ( $param eq '1' || $param eq '2' || $param eq '3' ) {
 
     # if it is a number (within range), use it to set the default pattern
-    print("Setting default pattern to id $param\n") if $verbose;
-    doit( "default?i=" . $param );
+    #TODO: 0 doesn't make it through, send off instead
+    do_log("Setting default pattern to id $param\n");
+    do_get( "default?i=" . $param );
 }
 elsif ( -r $param ) {
 
     # if it is a file, try to use it as an image based frame
-    print("getting pixels from image file: $param\n") if $verbose;
-    require Image::Resize;
-    my $image = Image::Resize->new($param);
-    my $new_image = $image->resize( $x_max, $y_max, 0 );
-
-    if ($output_image) {
-        my $out_name = $param . '_output.jpg';
-        print "Writing shrunken file $out_name\n" if $verbose;
-        open( FH, '>' . $out_name );
-        print FH $new_image->jpeg();
-        close(FH);
-    }
-
-    for ( my $x = 0; $x <= $x_max; $x++ ) {
-
-        for ( my $y = 0; $y <= $y_max; $y++ ) {
-            my $index = $new_image->getPixel( $x, $y );
-            my ( $r, $g, $b ) = $new_image->rgb($index);
-            printf( "%d x %d = %3d %3d %3d\n", $x, $y, $r, $g, $b )
-                if $verbose;
-            doit("pixel?x=$x&y=$y&r=$r&g=$g&b=$b&s=0");
-
-        }
-
-    }
-
-    doit("show");
-
+    my $frame = image_frame($param);
+    do_post( 'frame', { h => $frame } );
 }
 else {
     # finally, send it raw and see what happens
-    doit($param);
+    do_get($param);
 }
 
-sub doit {
-    my $cmd = "curl -s 'http://" . $ip . "/";
-    $cmd .= shift;
-    $cmd .= "'";
-    print $cmd . "\n" if $verbose;
-    `$cmd`;
+sub do_get {
+    my $url = $base_url . shift;
+    do_log($url);
+    my $response = HTTP::Tiny->new->get($url);
+    die('Failed to get url: $url') unless $response->{success};
+    return 1;
+}
+
+sub do_post {
+    my $url       = $base_url . shift;
+    my $form_data = shift;
+    my $response  = HTTP::Tiny->new->post_form( $url, $form_data );
+    die('Failed to get url: $url') unless $response->{success};
+    do_log( $url, Dumper($form_data) );
     return 1;
 }
 
@@ -121,13 +106,38 @@ usage: dl [options] command
     --y_max, -y	maximum height of display (zero offset)
     --verbose, -v	verbose output, will show http calls
     --help, -h	This help message
-    
+
     The value of command will be interpreted in the following order:
-        If it is a known command, it will be run (i.e. off or test);
+        If it is a known command, it will be run (i.e. off, test, frame);
         If it is a number, it will try to use it as a default pattern id;
-        If it is a valid file, it will use it as an image map;
+        If it is a valid file, it will use it as an image frame;
         Finally, it will send the unmodified string as a raw command over http;
 
+    The GD image library and Image::Resize Perl module are required if you
+    are going to pass in an image to be used as a frame. This image can be
+    of any type supported by GD. If this is missing, you will be informed upon
+    execution. These are not required for any other functions.
+
+    Sample executions
+    
+        Turn off lights, set default pattern to 0:
+        dl off
+        
+        Color wipe test:
+        dl test
+        
+        Set default pattern to rainbow (id 1)
+        dl 1
+        
+        Set pixels by image:
+        dl ~/awesome/image.jpg
+        
+        Setting hex colors for first five pixels:
+        dl frame ffffff000000ff000000ff000000ff
+        
+        Sending a raw command to desk (see Arduino code for commands):
+        dl "alert?h=ffffff&d=1000"
+    
 EOF
     if ($in) {
         die $in;
@@ -135,4 +145,40 @@ EOF
     else {
         exit(0);
     }
+}
+
+sub image_frame {
+    my $filename = shift;
+    do_log("getting pixels from image file: $filename");
+    require Image::Resize;
+    my $image = Image::Resize->new($filename);
+    my $new_image = $image->resize( $x_max, $y_max, 0 );
+
+    if ($output_image) {
+        my $out_name = $filename . '_output.jpg';
+        do_log("Writing shrunken file $out_name");
+        open( FH, '>' . $out_name );
+        print FH $new_image->jpeg();
+        close(FH);
+    }
+
+    my $frame_data;
+    for ( my $x = 0; $x <= $x_max; $x++ ) {
+
+        for ( my $y = 0; $y <= $y_max; $y++ ) {
+            my $index = $new_image->getPixel( $x, $y );
+            my ( $r, $g, $b ) = $new_image->rgb($index);
+            $frame_data .= sprintf( "%02x%02x%02x", $r, $g, $b );
+        }
+
+    }
+    return $frame_data;
+}
+
+sub do_log {
+    return unless $verbose;
+    while ( my $out = shift ) {
+        print $out . "\n";
+    }
+    return 1;
 }
