@@ -61,28 +61,30 @@ Adafruit_WS2801 strip = Adafruit_WS2801(STRIPLEN, dataPin, clockPin, WS2801_GRB)
 int defaultPattern = 0;
 
 // LED Grid stuff
-int max_x = 11;
-int max_y = 4;
+int max_x = 9;
+int max_y = 5;
 
-// 'graph' style x,y where 0,0 is bottom left
+//// 'screen' style x,y where 0,0 is top left
+//int grid[STRIPLEN] = {
+//   0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
+//  19,18,17,16,15,14,13,12,11,10,
+//  20,21,22,23,24,25,26,27,28,29,
+//  39,38,37,36,35,34,33,32,31,30,
+//  40,41,42,43,44,45,46,47,48,49,
+//  59,58,57,56,55,54,53,52,51,50
+//};
+
+
+//// 'plot' style x,y where 0,0 is bottom left
 int grid[STRIPLEN] = {
-	4,5,14,15,24,25,34,35,44,45,54,55,
-	3,6,13,16,23,26,33,36,43,46,53,56,
-	2,7,12,17,22,27,32,37,42,47,52,57,
-	1,8,11,18,21,28,31,38,41,48,51,58,
-	0,9,10,19,20,29,30,39,40,49,50,59
+  59,58,57,56,55,54,53,52,51,50,
+  40,41,42,43,44,45,46,47,48,49,
+  39,38,37,36,35,34,33,32,31,30,
+  20,21,22,23,24,25,26,27,28,29,
+  19,18,17,16,15,14,13,12,11,10,
+   0, 1, 2, 3, 4, 5, 6, 7, 8, 9
 };
 
-// 'screen' style x,y where 0,0 is top left
-/*
-int grid[STRIPLEN] = {
-	0,9,10,19,20,29,30,39,40,49,50,59,
-	1,8,11,18,21,28,31,38,41,48,51,58,
-	2,7,12,17,22,27,32,37,42,47,52,57,
-	3,6,13,16,23,26,33,36,43,46,53,56,
-	4,5,14,15,24,25,34,35,44,45,54,55
-};
-*/
 
 /*** Things you might want to change ***/
 
@@ -615,7 +617,7 @@ void cmd_frame(WebServer &server, WebServer::ConnectionType type, char *url_tail
           o++;
         }
         uint32_t c = hexColor(hc);
-        strip.setPixelColor(id, c);
+        strip.setPixelColor(grid[id], c);
         id++;
       }
     
@@ -634,7 +636,12 @@ void setup() {
 	Serial.begin(9600);
 	
 	//TODO: I think I've run out of memory, consolidate "tests"
-	Ethernet.begin(mac, ip);
+	//Ethernet.begin(mac, ip);
+
+  static uint8_t dns[] = { 8, 8, 8, 8 };
+  static uint8_t gw[] = { 10, 10, 16, 254 };
+  Ethernet.begin(mac, ip, dns, gw);
+  
 	webserver.setFailureCommand(&my_failCmd);
 	webserver.setDefaultCommand(&cmd_index);
 	webserver.addCommand("off", &cmd_off);
@@ -655,6 +662,8 @@ void setup() {
 	// light blip of light to signal we are ready to listen
 	colorAll(Color(0,0,11));
 	colorAll(Color(0,0,0));
+
+  lightTest(0);
 
   Serial.println("Ready..."); 
 }
