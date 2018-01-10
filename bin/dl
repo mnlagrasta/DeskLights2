@@ -119,25 +119,25 @@ usage: dl [options] command
     execution. These are not required for any other functions.
 
     Sample executions
-    
+
         Turn off lights, set default pattern to 0:
         dl off
-        
+
         Color wipe test:
         dl test
-        
+
         Set default pattern to rainbow (id 1)
         dl 1
-        
+
         Set pixels by image:
         dl ~/awesome/image.jpg
-        
+
         Setting hex colors for first five pixels:
         dl frame ffffff000000ff000000ff000000ff
-        
+
         Sending a raw command to desk (see Arduino code for commands):
         dl "alert?h=ffffff&d=1000"
-    
+
 EOF
     if ($in) {
         die $in;
@@ -152,7 +152,7 @@ sub image_frame {
     do_log("getting pixels from image file: $filename");
     require Image::Resize;
     my $image = Image::Resize->new($filename);
-    my $new_image = $image->resize( $x_max, $y_max, 0 );
+    my $new_image = $image->resize( $x_max+1, $y_max+1, 0 );
 
     if ($output_image) {
         my $out_name = $filename . '_output.jpg';
@@ -163,9 +163,9 @@ sub image_frame {
     }
 
     my $frame_data;
-    for ( my $x = 0; $x <= $x_max; $x++ ) {
+    for ( my $y = 0; $y <= $y_max; $y++ ) {
 
-        for ( my $y = 0; $y <= $y_max; $y++ ) {
+        for ( my $x = 0; $x <= $x_max; $x++ ) {
             my $index = $new_image->getPixel( $x, $y );
             my ( $r, $g, $b ) = $new_image->rgb($index);
             $frame_data .= sprintf( "%02x%02x%02x", $r, $g, $b );
