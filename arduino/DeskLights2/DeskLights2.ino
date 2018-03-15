@@ -41,6 +41,7 @@ http://server/alert?h=ffffff&d=1000
 
 #define WEBDUINO_SERIAL_DEBUGGING 0
 #define WEBDUINO_FAIL_MESSAGE "NOT ok\n"
+#define WEBDUINO_COMMANDS_COUNT 10 //this defaults to 8 in WebServer.h
 #include "SPI.h"
 #include "avr/pgmspace.h"
 #include "Ethernet.h"
@@ -652,9 +653,8 @@ void setup() {
 	webserver.addCommand("pixel", &cmd_pixel);
 	webserver.addCommand("default", &cmd_default);
 	webserver.addCommand("frame", &cmd_frame);
-	// It seems to ignore anything beyond the first 8
-	//webserver.addCommand("gridtest", &cmd_gridTest);
-	//webserver.addCommand("lighttest", &cmd_lightTest);
+	webserver.addCommand("gridtest", &cmd_gridTest);
+	webserver.addCommand("lighttest", &cmd_lightTest); //when adding extra commands, increase WEBDUINO_COMMANDS_COUNT
 	webserver.begin();
 	
 	strip.begin();
