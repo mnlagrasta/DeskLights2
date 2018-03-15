@@ -39,8 +39,9 @@ http://server/alert?h=ffffff&d=1000
 
 */
 
-#define WEBDUINO_SERIAL_DEBUGGING 0
+#define WEBDUINO_SERIAL_DEBUGGING 1
 #define WEBDUINO_FAIL_MESSAGE "NOT ok\n"
+#define WEBDUINO_COMMANDS_COUNT 10 //this defaults to 8 in WebServer.h
 #include "SPI.h"
 #include "avr/pgmspace.h"
 #include "Ethernet.h"
@@ -629,6 +630,48 @@ void cmd_frame(WebServer &server, WebServer::ConnectionType type, char *url_tail
   server.printP(ok);
 }
 
+void cmd_gridTest(WebServer &server, WebServer::ConnectionType type, char *url_tail, bool tail_complete) {
+	if (!auth(server)) { return;}
+
+	int d;
+
+	URLPARAM_RESULT rc;
+	char name[NAMELEN];
+	char value[VALUELEN];
+	while (strlen(url_tail)) {
+		rc = server.nextURLparam(&url_tail, name, NAMELEN, value, VALUELEN);
+		if ((rc != URLPARAM_EOS)) {
+			if (name[0] == 'd') {
+				d = atoi(value);
+			}
+		}
+	}
+
+	gridTest(d);
+	server.printP(ok);
+}
+
+void cmd_lightTest(WebServer &server, WebServer::ConnectionType type, char *url_tail, bool tail_complete) {
+	if (!auth(server)) { return;}
+
+	int d;
+
+	URLPARAM_RESULT rc;
+	char name[NAMELEN];
+	char value[VALUELEN];
+	while (strlen(url_tail)) {
+		rc = server.nextURLparam(&url_tail, name, NAMELEN, value, VALUELEN);
+		if ((rc != URLPARAM_EOS)) {
+			if (name[0] == 'd') {
+				d = atoi(value);
+			}
+		}
+	}
+
+	lightTest(d);
+	server.printP(ok);
+}
+
 
 // begin standard arduino setup and loop pattern
 
@@ -652,9 +695,8 @@ void setup() {
 	webserver.addCommand("pixel", &cmd_pixel);
 	webserver.addCommand("default", &cmd_default);
 	webserver.addCommand("frame", &cmd_frame);
-	// It seems to ignore anything beyond the first 8
-	//webserver.addCommand("gridtest", &cmd_gridTest);
-	//webserver.addCommand("lighttest", &cmd_lightTest);
+	webserver.addCommand("gridtest", &cmd_gridTest);
+	webserver.addCommand("lighttest", &cmd_lightTest); //when adding extra commands, increase WEBDUINO_COMMANDS_COUNT
 	webserver.begin();
 	
 	strip.begin();
